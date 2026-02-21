@@ -367,6 +367,31 @@ export function renderRegisterPageHTML(jwtState: JwtSecretState | null): string 
       flex: 1;
     }
 
+    .totp-preview {
+      margin-top: 12px;
+      border: 1px solid #d5dae1;
+      border-radius: 14px;
+      background: #f8fafc;
+      padding: 16px 20px;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .totp-code {
+      font-family: var(--mono);
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: 8px;
+      color: #111418;
+      line-height: 1.1;
+    }
+    .totp-expire {
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
     .flow-bottom {
       margin-top: 14px;
       padding: 0 8px;
@@ -635,16 +660,23 @@ export function renderRegisterPageHTML(jwtState: JwtSecretState | null): string 
                 </div>
               </div>
               <div class="qr-side">
-                <div class="server" id="totpSeed" style="margin-top:0;"></div>
-                <div style="height:10px"></div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                  <button class="btn primary" type="button" id="refreshTotpBtn" onclick="refreshTotpSeed()">
+                <div style="display:flex; gap:8px; align-items:stretch;">
+                  <input class="server" id="totpSeed" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" style="margin-top:0; flex:1; min-width:0; height:auto; cursor:text;" oninput="onTotpSeedInput()">
+                  <button class="btn primary" type="button" id="refreshTotpBtn" onclick="refreshTotpSeed()" style="flex-shrink:0;">
                     <svg class="icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="#fff" aria-hidden="true"><path d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z"/></svg>
                     <span id="refreshTotpBtnText">Refresh</span>
                   </button>
-                  <button class="btn" type="button" id="copyTotpBtn" onclick="copyTotpSeed()">
+                  <button class="btn" type="button" id="copyTotpBtn" onclick="copyTotpSeed()" style="flex-shrink:0;">
                     <svg class="icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="#1f1f1f" aria-hidden="true"><path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"/></svg>
                     <span id="copyTotpBtnText">Copy</span>
+                  </button>
+                </div>
+                <div class="totp-preview" id="totpPreview">
+                  <div class="totp-code" id="totpCodeDisplay">------</div>
+                  <div class="totp-expire" id="totpExpireText"></div>
+                  <button class="btn" type="button" id="copyTotpCodeBtn" onclick="copyTotpCode()">
+                    <svg class="icon-inline" xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="#1f1f1f" aria-hidden="true"><path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"/></svg>
+                    <span id="copyTotpCodeBtnText">Copy code</span>
                   </button>
                 </div>
               </div>
@@ -788,6 +820,8 @@ export function renderRegisterPageHTML(jwtState: JwtSecretState | null): string 
         s5Enable1: '打开 Cloudflare 控制台 -> Workers 和 Pages -> NodeWarden -> 设置 -> 变量和机密。',
         s5Enable2: '新增 Secret：TOTP_SECRET，值填写下方生成的 Base32 密钥。',
         s5QrTitle: '扫描二维码',
+        copyCode: '复制验证码',
+        totpExpire: '秒后过期',
         s6Title: '最终页面',
         s6Desc: '最后一步：查看客户端使用地址，并可选择隐藏初始化页面。',
         nameLabel: '昵称',
@@ -883,6 +917,8 @@ export function renderRegisterPageHTML(jwtState: JwtSecretState | null): string 
         s5Enable1: 'Open Cloudflare Dashboard -> Workers & Pages -> your service -> Settings -> Variables and Secrets.',
         s5Enable2: 'Add Secret: TOTP_SECRET, using the generated Base32 seed below.',
         s5QrTitle: 'Scan QR code',
+        copyCode: 'Copy code',
+        totpExpire: 's left',
         s6Title: 'Final step',
         s6Desc: 'Last step: check your server URL, then optionally hide this setup page.',
         nameLabel: 'Name',
@@ -1007,6 +1043,7 @@ export function renderRegisterPageHTML(jwtState: JwtSecretState | null): string 
       setText('t_s5_qr_title', t('s5QrTitle'));
       setText('refreshTotpBtnText', t('refresh'));
       setText('copyTotpBtnText', t('copy'));
+      setText('copyTotpCodeBtnText', t('copyCode'));
       setText('t_s6_title', t('s6Title'));
       setText('t_s6_desc', t('s6Desc'));
       setText('hideModalTitle', t('hideModalTitle'));
@@ -1099,7 +1136,7 @@ export function renderRegisterPageHTML(jwtState: JwtSecretState | null): string 
 
     function renderTotpHelper(seed) {
       const seedEl = document.getElementById('totpSeed');
-      if (seedEl) seedEl.textContent = seed;
+      if (seedEl) seedEl.value = seed;
 
       const uri = buildTotpUri(seed);
       const qr = document.getElementById('totpQr');
@@ -1107,14 +1144,108 @@ export function renderRegisterPageHTML(jwtState: JwtSecretState | null): string 
         const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=170x170&data=' + encodeURIComponent(uri);
         qr.src = qrUrl;
       }
+
+      const preview = document.getElementById('totpPreview');
+      if (preview) preview.style.display = 'flex';
+      startTotpTick();
     }
 
     function refreshTotpSeed() {
       renderTotpHelper(randomBase32(32));
     }
 
+    let totpSeedInputTimer = null;
+    function onTotpSeedInput() {
+      clearTimeout(totpSeedInputTimer);
+      totpSeedInputTimer = setTimeout(() => {
+        const el = document.getElementById('totpSeed');
+        const seed = el ? el.value.trim() : '';
+        if (!seed) return;
+        const uri = buildTotpUri(seed);
+        const qr = document.getElementById('totpQr');
+        if (qr) qr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=170x170&data=' + encodeURIComponent(uri);
+        const preview = document.getElementById('totpPreview');
+        if (preview) preview.style.display = 'flex';
+        startTotpTick();
+      }, 400);
+    }
+
     async function copyTotpSeed() {
       const el = document.getElementById('totpSeed');
+      if (!el) return;
+      const text = el.value || '';
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+      }
+      const btnText = document.getElementById('copyTotpBtnText');
+      if (btnText) {
+        const old = btnText.textContent;
+        btnText.textContent = t('copied');
+        setTimeout(() => { btnText.textContent = old; }, 1000);
+      }
+    }
+
+    function base32ToBuf(base32) {
+      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+      const s = base32.toUpperCase().replace(/[\s=\-]/g, '');
+      let bits = 0, val = 0;
+      const output = [];
+      for (const c of s) {
+        const idx = alphabet.indexOf(c);
+        if (idx === -1) return null;
+        val = (val << 5) | idx;
+        bits += 5;
+        if (bits >= 8) { bits -= 8; output.push((val >> bits) & 0xff); }
+      }
+      return output.length ? new Uint8Array(output) : null;
+    }
+
+    async function computeTotp(seed) {
+      const secret = base32ToBuf(seed);
+      if (!secret) return null;
+      const counter = Math.floor(Date.now() / 1000 / 30);
+      const cb = new Uint8Array(8);
+      let c = counter;
+      for (let i = 7; i >= 0; i--) { cb[i] = c & 0xff; c = Math.floor(c / 256); }
+      const key = await crypto.subtle.importKey('raw', secret, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+      const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, cb));
+      const offset = sig[sig.length - 1] & 0x0f;
+      const binary = ((sig[offset] & 0x7f) << 24) | ((sig[offset+1] & 0xff) << 16) | ((sig[offset+2] & 0xff) << 8) | (sig[offset+3] & 0xff);
+      return (binary % 1000000).toString().padStart(6, '0');
+    }
+
+    let totpTickTimer = null;
+
+    async function totpTick() {
+      const seedEl = document.getElementById('totpSeed');
+      const codeEl = document.getElementById('totpCodeDisplay');
+      const expireEl = document.getElementById('totpExpireText');
+      if (!seedEl || !codeEl || !expireEl) return;
+      const seed = seedEl.value.trim();
+      if (!seed) return;
+      const remaining = 30 - (Math.floor(Date.now() / 1000) % 30);
+      const code = await computeTotp(seed);
+      if (code) {
+        codeEl.textContent = code;
+        expireEl.textContent = remaining + t('totpExpire');
+      }
+    }
+
+    function startTotpTick() {
+      if (totpTickTimer) clearInterval(totpTickTimer);
+      totpTick();
+      totpTickTimer = setInterval(totpTick, 1000);
+    }
+
+    async function copyTotpCode() {
+      const el = document.getElementById('totpCodeDisplay');
       if (!el) return;
       const text = el.textContent || '';
       try {
@@ -1127,7 +1258,7 @@ export function renderRegisterPageHTML(jwtState: JwtSecretState | null): string 
         document.execCommand('copy');
         ta.remove();
       }
-      const btnText = document.getElementById('copyTotpBtnText');
+      const btnText = document.getElementById('copyTotpCodeBtnText');
       if (btnText) {
         const old = btnText.textContent;
         btnText.textContent = t('copied');
@@ -1446,7 +1577,7 @@ export function renderRegisterPageHTML(jwtState: JwtSecretState | null): string 
       if (emailInput) {
         emailInput.addEventListener('change', () => {
           const seedEl = document.getElementById('totpSeed');
-          const seed = seedEl ? (seedEl.textContent || '').trim() : '';
+          const seed = seedEl ? (seedEl.value || '').trim() : '';
           if (seed) renderTotpHelper(seed);
         });
       }
